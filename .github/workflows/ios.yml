@@ -1,0 +1,63 @@
+name: iOS Experimental Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ios:
+    name: Build iOS ARM64
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout Chaotix
+        uses: actions/checkout@v4
+
+      - name: Checkout SDL3
+        uses: actions/checkout@v4
+        with:
+          repository: libsdl-org/SDL
+          ref: release-3.2.24
+          path: _sdl3
+
+      - name: Checkout SDL3_ttf
+        uses: actions/checkout@v4
+        with:
+          repository: libsdl-org/SDL_ttf
+          ref: release-3.2.2
+          path: _sdl3_ttf
+          submodules: recursive
+
+      - name: Configure iOS
+        shell: bash
+        run: |
+          export SDL3_SOURCE_DIR="$GITHUB_WORKSPACE/_sdl3"
+          export CHAOTIX_ROM=""
+          cmake --preset ios \
+            -DCHAOTIX_SDL3_TTF_SOURCE_DIR="$GITHUB_WORKSPACE/_sdl3_ttf" \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+
+      - name: Build iOS
+        run: |
+          cmake --build build/ios \
+            --config Release \
+            --target chaotix \
+            --parallel 3
+
+      - name: Package unsigned app
+        shell: bash
+        run: |
+          APP=$(find build/ios -type d \
+            -name "ChaotixRecompiled.app" -print -quit)
+          if [ -z "$APP" ]; then
+            echo "iOS application bundle not found"
+            exit 1
+          fi
+          mkdir -p output
+          ditto -c -k --keepParent "$APP" \
+            output/ChaotixRecompiled-iOS-unsigned.zip
+
+      - name: Upload iOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChaotixRecompiled-iOS
+          path: output/ChaotixRecompiled-iOS-unsigned.zip

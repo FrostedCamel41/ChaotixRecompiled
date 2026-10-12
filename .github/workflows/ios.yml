@@ -44,21 +44,54 @@ jobs:
             --target chaotix \
             --parallel 3
 
-      - name: Package unsigned app
+      - name: Bundle SDL libraries
         shell: bash
         run: |
+          set -euo pipefail
+
           APP=$(find build/ios -type d \
             -name "ChaotixRecompiled.app" -print -quit)
+
           if [ -z "$APP" ]; then
             echo "iOS application bundle not found"
             exit 1
           fi
-          mkdir -p output
-          ditto -c -k --keepParent "$APP" \
-            output/ChaotixRecompiled-iOS-unsigned.zip
+
+          mkdir -p "$APP/Frameworks"
+
+          find build/ios -type f \
+            \( -name "libSDL3*.dylib" -o -name "libSDL3_ttf*.dylib" \) \
+            -print
+
+          while IFS= read -r LIB; do
+            cp -L "$LIB" "$APP/Frameworks/"
+          done < <(
+            find build/ios -type f \
+              \( -name "libSDL3*.dylib" -o -name "libSDL3_ttf*.dylib" \)
+          )
+
+          echo "Bundled libraries:"
+          ls -lah "$APP/Frameworks"
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP=$(find build/ios -type d \
+            -name "ChaotixRecompiled.app" -print -quit)
+
+          mkdir -p output/Payload
+
+          cp -R "$APP" output/Payload/
+
+          cd output
+          zip -qry ChaotixRecompiled-iOS.ipa Payload
+
+          rm -rf Payload
 
       - name: Upload iOS build
         uses: actions/upload-artifact@v4
         with:
           name: ChaotixRecompiled-iOS
-          path: output/ChaotixRecompiled-iOS-unsigned.zip
+          path: output/ChaotixRecompiled-iOS.ipa

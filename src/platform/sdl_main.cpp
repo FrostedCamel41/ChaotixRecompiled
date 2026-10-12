@@ -34,6 +34,7 @@
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -205,6 +206,15 @@ void capture_output(App& app) {
 // Places a user's ROM is likely to be, for the first-run setup to offer.
 std::vector<std::string> rom_search_dirs(const App& app) {
     std::vector<std::filesystem::path> dirs = {"__ROM__", "rom", "."};
+    #if defined(SDL_PLATFORM_IOS)
+    if (const char* docs = SDL_GetUserFolder(SDL_FOLDER_DOCUMENTS)) {
+        std::error_code ec;
+        const auto documents = std::filesystem::path(docs);
+        std::filesystem::create_directories(documents, ec);
+        std::ofstream marker(documents / "ChaotixRecompiled.txt");
+        marker << "Chaotix Recompiled iOS Documents folder\n";
+    }
+#endif
     if (const char* base = SDL_GetBasePath()) {
         dirs.push_back(std::filesystem::path(base) / "__ROM__");
         dirs.push_back(std::filesystem::path(base) / "rom");

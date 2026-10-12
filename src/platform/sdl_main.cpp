@@ -711,7 +711,19 @@ int main(int argc, char** argv) {
     int win_h = kActiveLines * app.cfg.window_scale;
     int win_w = int(std::lround(win_h * 4.0 / 3.0));
     if (app.cfg.raw.count("cli.w")) { win_w = std::atoi(app.cfg.raw["cli.w"].c_str()); win_h = std::atoi(app.cfg.raw["cli.h"].c_str()); }
-    app.window = SDL_CreateWindow("Knuckles' Chaotix Recompiled", win_w, win_h, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    #if defined(SDL_PLATFORM_IOS)
+    app.window = SDL_CreateWindow(
+        "Knuckles' Chaotix Recompiled",
+        0, 0,
+        SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIGH_PIXEL_DENSITY
+    );
+#else
+    app.window = SDL_CreateWindow(
+        "Knuckles' Chaotix Recompiled",
+        win_w, win_h,
+        SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY
+    );
+#endif
     if (!app.window) { std::fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError()); return 1; }
     if (SDL_Surface* icon = SDL_CreateSurfaceFrom(64, 64, SDL_PIXELFORMAT_RGBA32,
                                                   const_cast<unsigned char*>(app_icon_rgba), 64 * 4)) {

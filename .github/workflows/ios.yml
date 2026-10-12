@@ -129,7 +129,18 @@ jobs:
 
           echo "Final bundled libraries:"
           ls -lah "$FRAMEWORKS"
+      - name: Enable iOS Files access
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=$(find build/ios -type d -name "ChaotixRecompiled.app" -print -quit)
+          PLIST="$APP/Info.plist"
 
+          /usr/libexec/PlistBuddy -c "Add :UIFileSharingEnabled bool true" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Set :UIFileSharingEnabled true" "$PLIST"
+
+          /usr/libexec/PlistBuddy -c "Add :LSSupportsOpeningDocumentsInPlace bool true" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Set :LSSupportsOpeningDocumentsInPlace true" "$PLIST"
       - name: Package unsigned IPA
         shell: bash
         run: |

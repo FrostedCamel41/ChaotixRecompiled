@@ -32,6 +32,7 @@ jobs:
         run: |
           export SDL3_SOURCE_DIR="$GITHUB_WORKSPACE/_sdl3"
           export CHAOTIX_ROM=""
+
           cmake --preset ios \
             -DCHAOTIX_SDL3_TTF_SOURCE_DIR="$GITHUB_WORKSPACE/_sdl3_ttf" \
             -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
@@ -44,7 +45,7 @@ jobs:
             --target chaotix \
             --parallel 3
 
-      - name: Bundle SDL libraries
+      - name: Fix and bundle SDL libraries
         shell: bash
         run: |
           set -euo pipefail
@@ -53,25 +54,81 @@ jobs:
             -name "ChaotixRecompiled.app" -print -quit)
 
           if [ -z "$APP" ]; then
-            echo "iOS application bundle not found"
+            echo "ERROR: Application bundle not found"
             exit 1
           fi
 
-          mkdir -p "$APP/Frameworks"
+          echo "Application found: $APP"
 
-          find build/ios -type f \
-            \( -name "libSDL3*.dylib" -o -name "libSDL3_ttf*.dylib" \) \
-            -print
+          FRAMEWORKS="$APP/Frameworks"
+          EXECUTABLE="$APP/ChaotixRecompiled"
 
-          while IFS= read -r LIB; do
-            cp -L "$LIB" "$APP/Frameworks/"
-          done < <(
-            find build/ios -type f \
-              \( -name "libSDL3*.dylib" -o -name "libSDL3_ttf*.dylib" \)
-          )
+          mkdir -p "$FRAMEWORKS"
 
-          echo "Bundled libraries:"
-          ls -lah "$APP/Frameworks"
+          SDL3=$(find build/ios -type f \
+            -name "libSDL3.0.dylib" -print -quit)
+
+          SDLTTF=$(find build/ios -type f \
+            -name "libSDL3_ttf.0.2.2.dylib" -print -quit)
+
+          if [ -z "$SDL3" ] || [ -z "$SDLTTF" ]; then
+            echo "ERROR: Required SDL libraries not found"
+            exit 1
+          fi
+
+          echo "Copying SDL3..."
+          cp "$SDL3" "$FRAMEWORKS/libSDL3.0.dylib"
+
+          echo "Copying SDL3_ttf..."
+          cp "$SDLTTF" "$FRAMEWORKS/libSDL3_ttf.0.dylib"
+
+          echo "Updating library identifiers..."
+
+          install_name_tool \
+            -id "@rpath/libSDL3.0.dylib" \
+            "$FRAMEWORKS/libSDL3.0.dylib"
+
+          install_name_tool \
+            -id "@rpath/libSDL3_ttf.0.dylib" \
+            "$FRAMEWORKS/libSDL3_ttf.0.dylib"
+
+          echo "Updating SDL3_ttf dependencies..."
+
+          install_name_tool \
+            -change "@rpath/libSDL3.0.dylib" \
+            "@loader_path/libSDL3.0.dylib" \
+            "$FRAMEWORKS/libSDL3_ttf.0.dylib"
+
+          echo "Updating application dependencies..."
+
+          install_name_tool \
+            -change "@rpath/libSDL3_ttf.0.dylib" \
+            "@executable_path/Frameworks/libSDL3_ttf.0.dylib" \
+            "$EXECUTABLE"
+
+          install_name_tool \
+            -change "@rpath/libSDL3.0.dylib" \
+            "@executable_path/Frameworks/libSDL3.0.dylib" \
+            "$EXECUTABLE"
+
+          echo "Adding application framework search path..."
+
+          if ! otool -l "$EXECUTABLE" | grep -q \
+            "@executable_path/Frameworks"; then
+
+            install_name_tool \
+              -add_rpath "@executable_path/Frameworks" \
+              "$EXECUTABLE"
+          fi
+
+          echo "Checking executable dependencies..."
+          otool -L "$EXECUTABLE"
+
+          echo "Checking SDL3_ttf dependencies..."
+          otool -L "$FRAMEWORKS/libSDL3_ttf.0.dylib"
+
+          echo "Final bundled libraries:"
+          ls -lah "$FRAMEWORKS"
 
       - name: Package unsigned IPA
         shell: bash
@@ -81,12 +138,21 @@ jobs:
           APP=$(find build/ios -type d \
             -name "ChaotixRecompiled.app" -print -quit)
 
+          if [ -z "$APP" ]; then
+            echo "ERROR: Application bundle not found"
+            exit 1
+          fi
+
           mkdir -p output/Payload
 
           cp -R "$APP" output/Payload/
 
           cd output
+
           zip -qry ChaotixRecompiled-iOS.ipa Payload
+
+          echo "IPA created successfully:"
+          ls -lah ChaotixRecompiled-iOS.ipa
 
           rm -rf Payload
 
@@ -95,3 +161,4 @@ jobs:
         with:
           name: ChaotixRecompiled-iOS
           path: output/ChaotixRecompiled-iOS.ipa
+          if-no-files-found: error

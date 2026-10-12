@@ -34,7 +34,8 @@ jobs:
           export CHAOTIX_ROM=""
           cmake --preset ios \
             -DCHAOTIX_SDL3_TTF_SOURCE_DIR="$GITHUB_WORKSPACE/_sdl3_ttf" \
-            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
+            -DCMAKE_SHARED_LINKER_FLAGS="-framework CoreFoundation -framework CoreText -framework CoreGraphics"
 
       - name: Build iOS
         run: |

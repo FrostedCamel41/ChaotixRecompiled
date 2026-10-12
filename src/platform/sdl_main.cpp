@@ -214,10 +214,16 @@ std::vector<std::string> rom_search_dirs(const App& app) {
     // Desktop: the usual download/document folders. Mobile: the app's own
     // documents folder, which is what file managers expose.
     for (SDL_Folder f : {SDL_FOLDER_DOWNLOADS, SDL_FOLDER_DOCUMENTS, SDL_FOLDER_DESKTOP})
-        if (const char* p = SDL_GetUserFolder(f)) {
-            dirs.push_back(std::filesystem::path(p));
-            dirs.push_back(std::filesystem::path(p) / "Chaotix");
+    if (const char* p = SDL_GetUserFolder(f)) {
+        dirs.push_back(std::filesystem::path(p));
+        dirs.push_back(std::filesystem::path(p) / "Chaotix");
+
+#if defined(SDL_PLATFORM_IOS)
+        if (f == SDL_FOLDER_DOCUMENTS) {
+            dirs.push_back(std::filesystem::path(p) / "Files");
         }
+#endif
+    }
 #if defined(SDL_PLATFORM_ANDROID)
     if (const char* ext = SDL_GetAndroidExternalStoragePath()) {
         dirs.push_back(std::filesystem::path(ext));

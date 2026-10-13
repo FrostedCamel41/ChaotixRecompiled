@@ -269,6 +269,10 @@ std::string rom_from_args(int argc, char** argv) {
 }
 
 void apply_window_mode(App& app) {
+    #if defined(SDL_PLATFORM_IOS)
+    SDL_SetWindowFullscreen(app.window, true);
+    return;
+#endif
     switch (app.cfg.window_mode) {
     case WindowMode::Windowed:
         SDL_SetWindowFullscreen(app.window, false);

@@ -141,6 +141,8 @@ jobs:
 
           /usr/libexec/PlistBuddy -c "Add :LSSupportsOpeningDocumentsInPlace bool true" "$PLIST" || \
           /usr/libexec/PlistBuddy -c "Set :LSSupportsOpeningDocumentsInPlace true" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UIStatusBarHidden bool true" "$PLIST"
       - name: Inspect iOS display configuration
         shell: bash
         run: |

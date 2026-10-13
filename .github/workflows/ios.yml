@@ -141,6 +141,26 @@ jobs:
 
           /usr/libexec/PlistBuddy -c "Add :LSSupportsOpeningDocumentsInPlace bool true" "$PLIST" || \
           /usr/libexec/PlistBuddy -c "Set :LSSupportsOpeningDocumentsInPlace true" "$PLIST"
+      - name: Inspect iOS display configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=$(find build/ios -type d -name "ChaotixRecompiled.app" -print -quit)
+          PLIST="$APP/Info.plist"
+
+          echo "===== iOS DISPLAY CONFIGURATION ====="
+          for KEY in \
+            UILaunchStoryboardName \
+            UILaunchScreen \
+            UIRequiresFullScreen \
+            UISupportedInterfaceOrientations \
+            UISupportedInterfaceOrientations~iphone \
+            UIStatusBarHidden \
+            UIViewControllerBasedStatusBarAppearance; do
+            echo "Checking: $KEY"
+            /usr/libexec/PlistBuddy -c "Print :$KEY" "$PLIST" || true
+          done
+          echo "===== END CONFIGURATION ====="      
       - name: Package unsigned IPA
         shell: bash
         run: |
